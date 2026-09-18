@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Pytest / Testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+borrow_book_failure.png
+error_screenshot.png
+
+# Playwright artifacts
+test-results/
+playwright-report/

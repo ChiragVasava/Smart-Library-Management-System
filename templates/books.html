@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Catalog — Smart Library{% endblock %}
+
+{% block extra_head %}
+<style>
+    .catalog-hero {
+        margin-bottom: 2.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    .welcome-title {
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #FFFFFF, #CBD5E1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .catalog-subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+    }
+
+    .search-box-container {
+        position: relative;
+        max-width: 480px;
+        width: 100%;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.95rem 1.25rem 0.95rem 3rem;
+        background: rgba(17, 24, 39, 0.85);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-md);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1.1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        pointer-events: none;
+    }
+
+    .books-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.75rem;
+    }
+
+    .book-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+    }
+
+    .book-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(99, 102, 241, 0.4);
+        box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.4);
+    }
+
+    .book-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--primary), var(--accent));
+        opacity: 0.6;
+    }
+
+    .book-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .book-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1.35;
+        margin-bottom: 0.35rem;
+    }
+
+    .book-author {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .book-meta {
+        margin: 1.25rem 0;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .book-actions {
+        margin-top: 1rem;
+    }
+
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-card);
+        border: 1px dashed var(--border-card);
+        border-radius: var(--radius-lg);
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="catalog-hero">
+    <div>
+        <h1 class="welcome-title">Welcome, {{ user_greeting }}!</h1>
+        <p class="catalog-subtitle">Explore our curated collection of books and borrow your next read</p>
+    </div>
+
+    <form method="GET" action="/books" class="search-box-container" id="search-form">
+        <span class="search-icon">🔍</span>
+        <input 
+            type="text" 
+            id="search-input" 
+            name="search" 
+            class="search-input" 
+            placeholder="Search books..." 
+            aria-label="Search books"
+            value="{{ search_query or '' }}"
+            autocomplete="off"
+        />
+    </form>
+</div>
+
+<div class="books-grid" id="books-grid">
+    {% for book in books %}
+        <div class="book-card" data-title="{{ book.title | lower }}" data-author="{{ book.author | lower }}">
+            <div>
+                <div class="book-card-header">
+                    <span class="badge {% if book.available %}badge-available{% else %}badge-borrowed{% endif %}">
+                        {% if book.available %}Available{% else %}Borrowed{% endif %}
+                    </span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">ISBN: {{ book.isbn }}</span>
+                </div>
+                <h3 class="book-title">{{ book.title }}</h3>
+                <div class="book-author">by {{ book.author }}</div>
+
+                <div class="book-meta">
+                    <div><span>Identifier:</span> <strong style="color: #E2E8F0;">{{ book.id }}</strong></div>
+                    {% if book.tags %}
+                        <div><span>Tags:</span> <strong style="color: #A5B4FC;">{{ book.tags | join(', ') }}</strong></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="book-actions">
+                <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    style="width: 100%;" 
+                    onclick="window.location.href='/books/{{ book.id }}'"
+                >
+                    View Details
+                </button>
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No books found matching your search.</h3>
+            <p style="margin-top: 0.5rem;"><a href="/books" class="btn btn-secondary" style="margin-top: 1rem;">Clear Search</a></p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const searchInput = document.getElementById('search-input');
+    const booksGrid = document.getElementById('books-grid');
+    const bookCards = Array.from(document.querySelectorAll('.book-card'));
+
+    function filterCards(query) {
+        const q = query.trim().toLowerCase();
+        let matchCount = 0;
+        bookCards.forEach(card => {
+            const title = card.getAttribute('data-title') || '';
+            const author = card.getAttribute('data-author') || '';
+            if (!q || title.includes(q) || author.includes(q)) {
+                card.style.display = 'flex';
+                matchCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterCards(e.target.value);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                filterCards(searchInput.value);
+                // Also let form submit if needed or preventDefault
+                e.preventDefault();
+            }
+        });
+    }
+</script>
+{% endblock %}

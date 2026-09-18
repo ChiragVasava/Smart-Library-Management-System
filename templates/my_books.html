@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}My Borrowed Books — Smart Library{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-header {
+        margin-bottom: 2.5rem;
+    }
+
+    .page-title {
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+        color: #FFFFFF;
+    }
+
+    .page-subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+    }
+
+    .borrowed-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 1.75rem;
+    }
+
+    .borrowed-book-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+    }
+
+    .borrowed-book-card:hover {
+        border-color: rgba(99, 102, 241, 0.4);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    }
+
+    .borrowed-book-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, #10B981, #059669);
+    }
+
+    .loan-info {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin: 1.25rem 0;
+        font-size: 0.85rem;
+    }
+
+    .loan-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.35rem;
+    }
+
+    .loan-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-card);
+        border: 1px dashed var(--border-card);
+        border-radius: var(--radius-lg);
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">My Borrowed Books</h1>
+    <p class="page-subtitle">Track your currently active library loans, due dates, and return books</p>
+</div>
+
+{% if borrowed_books %}
+    <div class="borrowed-grid">
+        {% for item in borrowed_books %}
+            {% set book = item.book %}
+            {% set loan = item.loan %}
+            <div class="borrowed-book-card">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                        <span class="badge badge-borrowed">Active Loan</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">{{ book.id }}</span>
+                    </div>
+
+                    <h2 style="font-size: 1.35rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.35rem;">
+                        {{ book.title }}
+                    </h2>
+                    <div style="color: #A5B4FC; font-size: 0.95rem; font-weight: 500;">
+                        by {{ book.author }}
+                    </div>
+
+                    <div class="loan-info">
+                        <div class="loan-row">
+                            <span style="color: var(--text-muted);">Borrowed Date:</span>
+                            <strong style="color: var(--text-main);">{{ loan.borrowed_on }}</strong>
+                        </div>
+                        <div class="loan-row">
+                            <span style="color: var(--text-muted);">Due Date:</span>
+                            <strong style="color: #FBBF24;">{{ loan.due_date }}</strong>
+                        </div>
+                        <div class="loan-row">
+                            <span style="color: var(--text-muted);">Renewals Used:</span>
+                            <strong style="color: var(--text-main);">{{ loan.renewals }} / 2</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                    <a href="/books/{{ book.id }}" class="btn btn-secondary" style="flex: 1;">Details</a>
+                    <button 
+                        type="button" 
+                        class="btn btn-primary" 
+                        style="flex: 1;" 
+                        onclick="handleReturnFromMyBooks('{{ book.id }}')"
+                    >
+                        Return
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📖</div>
+        <h3 style="font-size: 1.35rem; color: #FFFFFF; margin-bottom: 0.5rem;">No active loans</h3>
+        <p style="margin-bottom: 1.5rem;">You have not borrowed any books yet. Explore the catalog and borrow books to see them here.</p>
+        <a href="/books" class="btn btn-primary">Browse Catalog</a>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function handleReturnFromMyBooks(bookId) {
+        if (!confirm('Return this book to the library?')) return;
+
+        try {
+            const response = await fetch('/api/return', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_id: bookId })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                alert('Book returned successfully!');
+                window.location.reload();
+            } else {
+                alert(data.error || 'Failed to return book');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Failed to return book due to network error.');
+        }
+    }
+</script>
+{% endblock %}

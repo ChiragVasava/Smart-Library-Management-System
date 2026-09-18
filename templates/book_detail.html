@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} — Smart Library{% endblock %}
+
+{% block extra_head %}
+<style>
+    .detail-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
+        max-width: 850px;
+        margin: 1.5rem auto;
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 1.5rem;
+    }
+
+    .detail-title {
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+        margin-bottom: 0.5rem;
+        color: #FFFFFF;
+    }
+
+    .detail-author {
+        font-size: 1.2rem;
+        color: #A5B4FC;
+        font-weight: 500;
+    }
+
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.25rem;
+        margin: 2rem 0;
+        background: rgba(15, 23, 42, 0.5);
+        padding: 1.5rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-card);
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .meta-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+
+    .meta-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .action-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 2rem;
+    }
+
+    /* Confirmation Modal Container */
+    .confirmation-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .confirmation-modal {
+        background: #1E293B;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: var(--radius-lg);
+        padding: 2.25rem;
+        max-width: 480px;
+        width: 90%;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        animation: scaleIn 0.2s ease-out;
+    }
+
+    @keyframes scaleIn {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    .toast-success {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-card">
+        <div id="toast-success-msg" class="toast-success">Book borrowed successfully!</div>
+
+    <div class="detail-header">
+        <div>
+            <h1 class="detail-title" id="book-title">{{ book.title }}</h1>
+            <div class="detail-author">by {{ book.author }}</div>
+        </div>
+        <span id="status-badge" class="badge {% if book.available %}badge-available{% else %}badge-borrowed{% endif %}">
+            {% if book.available %}Available{% else %}Borrowed{% endif %}
+        </span>
+    </div>
+
+    <p style="color: var(--text-muted); font-size: 1.05rem; line-height: 1.7;">
+        A celebrated masterwork of literature, tracked and managed within the Smart Community Library system. 
+        Members are eligible for a 14-day lending period with automatic renewal options and fine tracking.
+    </p>
+
+    <div class="meta-grid">
+        <div class="meta-item">
+            <span class="meta-label">Book ID</span>
+            <span class="meta-value">{{ book.id }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">ISBN-13</span>
+            <span class="meta-value">{{ book.isbn }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Standard Loan Period</span>
+            <span class="meta-value">14 Days</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Max Renewals</span>
+            <span class="meta-value">2 Times</span>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <!-- Borrow Button: Visible when book is available and not borrowed by this user -->
+        <button 
+            type="button" 
+            id="borrow-btn" 
+            class="btn btn-primary"
+            style="{% if not book.available %}display: none;{% endif %}"
+            onclick="openConfirmationModal()"
+        >
+            Borrow
+        </button>
+
+        <!-- Return Button: Visible when book is currently borrowed by this user -->
+        <button 
+            type="button" 
+            id="return-btn" 
+            class="btn btn-secondary"
+            style="{% if book.available %}display: none;{% endif %}"
+            onclick="handleReturnBook()"
+        >
+            Return
+        </button>
+
+        <a href="/books" class="btn btn-secondary">Back to Catalog</a>
+    </div>
+</div>
+
+<!-- Confirmation Modal required by TestForge Playwright Script -->
+<div id="modal-container" class="confirmation-modal-backdrop" style="display: none;">
+    <div class="confirmation-modal" id="confirmation-modal-box">
+        <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.75rem; color: #FFFFFF;">
+            Confirm Loan Request
+        </h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.75rem; font-size: 0.95rem; line-height: 1.5;">
+            Are you sure you want to borrow <strong style="color: #FFFFFF;">{{ book.title }}</strong>?
+            The book will be loaned to your account for 14 days.
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeConfirmationModal()">Cancel</button>
+            <button type="button" id="confirm-borrow-btn" class="btn btn-success" onclick="handleConfirmBorrow()">
+                Confirm Borrow
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const bookId = "{{ book.id }}";
+    const modalContainer = document.getElementById('modal-container');
+    const toastSuccess = document.getElementById('toast-success-msg');
+    const borrowBtn = document.getElementById('borrow-btn');
+    const returnBtn = document.getElementById('return-btn');
+    const statusBadge = document.getElementById('status-badge');
+
+    function openConfirmationModal() {
+        modalContainer.style.display = 'flex';
+    }
+
+    function closeConfirmationModal() {
+        modalContainer.style.display = 'none';
+    }
+
+    async function handleConfirmBorrow() {
+        const confirmBtn = document.getElementById('confirm-borrow-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+
+        try {
+            const response = await fetch('/api/borrow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_id: bookId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // 1. Close the modal
+                closeConfirmationModal();
+
+                // 2. Display success message (.toast-success)
+                toastSuccess.style.display = 'flex';
+                toastSuccess.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // 3. State update: Borrow button not visible, Return button visible
+                borrowBtn.style.display = 'none';
+                returnBtn.style.display = 'inline-flex';
+
+                // 4. Update status badge
+                statusBadge.textContent = 'Borrowed';
+                statusBadge.className = 'badge badge-borrowed';
+            } else {
+                alert(data.error || 'Failed to borrow book');
+                closeConfirmationModal();
+            }
+        } catch (err) {
+            console.error('Borrow error:', err);
+            alert('A network error occurred while borrowing.');
+            closeConfirmationModal();
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm Borrow';
+        }
+    }
+
+    async function handleReturnBook() {
+        if (!confirm('Are you sure you want to return this book?')) return;
+
+        try {
+            const response = await fetch('/api/return', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_id: bookId })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                toastSuccess.style.display = 'none';
+                borrowBtn.style.display = 'inline-flex';
+                returnBtn.style.display = 'none';
+                statusBadge.textContent = 'Available';
+                statusBadge.className = 'badge badge-available';
+                alert('Book returned successfully!');
+            } else {
+                alert(data.error || 'Failed to return book');
+            }
+        } catch (err) {
+            console.error('Return error:', err);
+            alert('A network error occurred while returning.');
+        }
+    }
+</script>
+{% endblock %}
