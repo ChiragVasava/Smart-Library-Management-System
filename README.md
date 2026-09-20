@@ -33,6 +33,9 @@ smart_library/
 ├── exceptions.py          # Custom exception hierarchy
 ├── logger.py               # Logging + context manager
 ├── main.py                 # Runnable end-to-end demo
+├── web_app.py              # FastAPI web interface & REST APIs
+├── templates/              # Jinja2 HTML templates for Web UI
+├── playwright_tests/       # Playwright E2E browser test suites
 ├── tests/
 │   └── test_sample.py     # Small hand-written reference test suite
 ├── requirements.txt
@@ -42,13 +45,13 @@ smart_library/
 ## File relationships
 
 ```
-                    main.py
-                       │
-                       ▼
-               LibraryManager
-               /      |      \
-              /       |       \
-             ▼        ▼        ▼
+                    main.py / web_app.py
+                              │
+                              ▼
+                       LibraryManager
+                       /      |      \
+                      /       |       \
+                     ▼        ▼        ▼
        Inventory   Membership  Payment
              │          │         │
              ▼          ▼         ▼
@@ -94,16 +97,65 @@ Borrow Book → Check Membership → Check Inventory → Calculate Fine
 → Process Payment → Send Notification → Log Transaction
 ```
 
-## Running it
+## Running the Application Locally
+
+### 1. Prerequisites & Installation
+
+Create a virtual environment (optional but recommended) and install dependencies:
 
 ```bash
+# Create and activate virtual environment (Windows)
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install required dependencies
 pip install -r requirements.txt
 
-# Run the end-to-end demo
-python main.py
+# Install Playwright browser binaries (for automated browser testing)
+playwright install chromium
+```
 
-# Run the reference test suite
-pytest -v
+### 2. Start the Web Application on Localhost
+
+Run the FastAPI web application on **`http://localhost:3000`**:
+
+```bash
+# Option A: Run directly via Python
+python web_app.py
+
+# Option B: Run via Uvicorn
+python -m uvicorn web_app:app --host 0.0.0.0 --port 3000
+```
+
+Once started, open your browser and navigate to:
+👉 **[http://localhost:3000](http://localhost:3000)** (or `http://localhost:3000/login`)
+
+#### Demo Login Credentials
+- **Email**: `member@test.com`
+- **Password**: `Password123`
+
+#### Key Web Features & Endpoints
+- **Browse Catalog**: `http://localhost:3000/books` — Real-time search and book cards.
+- **Book Details & Borrow**: `http://localhost:3000/books/gatsby-001` — Lending with confirmation modal and status tracking.
+- **My Borrowed Books**: `http://localhost:3000/profile/my-books` — View active loans and return books.
+- **Reset Test Data**: `http://localhost:3000/api/reset` (Visiting `/login` also resets demo data automatically for repeatable testing).
+
+### 3. Run the CLI Demo
+
+The original CLI workflow remains fully functional:
+
+```bash
+python main.py
+```
+
+### 4. Running the Tests
+
+```bash
+# Run unit & business logic reference test suite
+pytest tests -v
+
+# Run Playwright end-to-end browser test against http://localhost:3000
+pytest playwright_tests/test_borrow_book.py -v
 ```
 
 ## Using this with TestForge AI
